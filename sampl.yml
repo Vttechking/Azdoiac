@@ -1,0 +1,59 @@
+trigger: 
+- main
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    pool:
+      name: Default
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformTask@5
+      displayName: Tf init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: 'Azure_DevOps_Labs_Sub(574d27a4-1f81-4d11-8351-6190caec3e54)'
+        backendAzureRmOverrideSubscriptionID: '574d27a4-1f81-4d11-8351-6190caec3e54'
+        backendAzureRmResourceGroupName: 'TerraformLab'
+        backendAzureRmStorageAccountName: 'tfstoragevkl'
+        backendAzureRmContainerName: 'adoiactf'
+        backendAzureRmKey: 'prod.terraform.tfstate'
+    - task: TerraformTask@5
+      displayName: Tf Validate
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+    - task: TerraformTask@5
+      displayName: Tf fmt
+      inputs:
+        provider: 'azurerm'
+        command: 'custom'
+        outputTo: 'console'
+        customCommand: 'fmt'
+        environmentServiceNameAzureRM: 'Azure_DevOps_Labs_Sub(574d27a4-1f81-4d11-8351-6190caec3e54)'
+    - task: TerraformTask@5
+      displayName: Tf plan
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        commandOptions: '-out $(Build.SourcesDirectory)/tfplanfile'
+        environmentServiceNameAzureRM: 'Azure_DevOps_Labs_Sub(574d27a4-1f81-4d11-8351-6190caec3e54)'
+     
+    - task: ArchiveFiles@2
+      displayName: Archive files
+      inputs:
+        rootFolderOrFile: '$(Build.SourcesDirectory)/'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+        replaceExistingArchive: true
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: '(Build.BuildId)-build'
+        publishLocation: 'Container'
+    
